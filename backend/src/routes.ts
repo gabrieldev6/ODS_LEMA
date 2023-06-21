@@ -6,6 +6,7 @@ import { UsuarioController } from "./controllers/UsuarioController";
 import { adminController } from './controllers/adminController';
 import { Router } from "express";
 import { autenticaoToken, adminAutenticacao } from './middlewares/autenticacaoToken';
+import { adminPedidoAnonimoController } from './controllers/adminPedidoAnonimoController';
 
 const routes = Router();
 
@@ -16,9 +17,10 @@ const routes = Router();
 // Cadastro de pedido anônimo
 routes.post("/pedidoanonimo/create", new PedidoAnonimoController().createPedidoAnonimo);
 // lista de todos os pedidos
-routes.get("/pedidoanonimo/get", new PedidoAnonimoController().listPedidosAnonimos)
+// routes.get("/pedidoanonimo/get", new PedidoAnonimoController().listPedidosAnonimos)
 // lista pelo código do pedido
-routes.get("/pedidoanonimo/getPedidoByCodigo/:codigo", new PedidoAnonimoController().getPedidoByCodigo)
+routes.get("/pedidoanonimo/listPedidoByCodigo/:codigo", new PedidoAnonimoController().listPedidosAnonimosByCodigo)
+
 // update pedido pelo código
 routes.put("/pedidoanonimo/update/:codigo", new PedidoAnonimoController().updatePedido)
 // delete pedido pelo código
@@ -65,6 +67,9 @@ routes.delete("/pedido/delete/:id_pedido", new PedidoController().deletePedido)
 
 //rotas que sao acessadas pelo root
 routes.use(adminAutenticacao)
+
+// ADMIN USUÁRIO
+
 // listar usuários
 routes.get("/adminUser/listUser/", new adminController().listUser)
 // listar usuário por id
@@ -74,11 +79,22 @@ routes.put("/adminUser/update/:id_usuario", new adminController().updateUser)
 // deletar usuário por id
 routes.delete("/adminUser/delete/:id_usuario", new adminController().deleteUser)
 
+// ADMIN PEDIDO
 //retornar os pedidos a partir do estado
 routes.get("/adminPedidos/estado_pedido=:estado", new adminController().readPedidos)
 //atualiza o pedido apartir do id
 routes.put("/adminPedidos/id_pedido=:id_pedido", new adminController().updatePedidos)
 
+// ADMIN PEDIDO ANONIMO
+
+// lista todos
+routes.get("/adminPedidosAnonimo/get", new adminPedidoAnonimoController().listPedidosAnonimos)
+// lista por código
+routes.get("/adminPedidosAnonimo/getById/:codigo", new adminPedidoAnonimoController().listPedidosAnonimosByCodigo)
+// atualiza por código
+routes.put("/adminPedidosAnonimo/put/:codigo", new adminPedidoAnonimoController().updatePedido)
+// deleta por código
+routes.delete("/adminPedidosAnonimo/delete/:codigo", new adminPedidoAnonimoController().deletePedido)
 
 // CARGO
 

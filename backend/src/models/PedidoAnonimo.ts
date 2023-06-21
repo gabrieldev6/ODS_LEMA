@@ -9,7 +9,7 @@ export class PedidoAnonimo {
   readonly comentario: string;
   readonly codigo: string;
   readonly id_horaDisponivel: number;
-  readonly id_autorAutorizadorAnonimo: number;
+  readonly id_autorAutorizadorAnonimo: number | null;
 
   constructor(
     material: string,
@@ -21,7 +21,7 @@ export class PedidoAnonimo {
     comentario: string,
     codigo: string,
     id_horaDisponivel: number,
-    id_autorAutorizadorAnonimo: number
+    id_autorAutorizadorAnonimo: number | null
   ) {
     this.material = material;
     this.maquina = maquina;
@@ -64,7 +64,7 @@ export class PedidoAnonimo {
     return this.id_horaDisponivel;
   }
 
-  public get Id_autorAutorizador(): number {
+  public get Id_autorAutorizador(): number | null{
     return this.Id_autorAutorizador;
   }
   public setEstado(estado: Estado) {

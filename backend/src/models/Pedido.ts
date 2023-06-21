@@ -10,7 +10,7 @@ export class Pedido {
   readonly comentario: string;
   readonly id_horaDisponivel: number;
   readonly id_autorPedido: number;
-  readonly id_autorAutorizador: number;
+  readonly id_autorAutorizador: number | null;
 
   constructor(
     material: string,
@@ -23,7 +23,7 @@ export class Pedido {
     comentario: string,
     id_horaDisponivel: number,
     id_autorPedido: number,
-    id_autorAutorizador: number
+    id_autorAutorizador: number | null
   ) {
     this.material = material;
     this.prioridade = prioridade;
@@ -89,7 +89,7 @@ export class Pedido {
     return this.id_autorPedido;
   }
 
-  public get Id_autorAutorizador(): number {
+  public get Id_autorAutorizador(): number | null{
     return this.id_autorAutorizador;
   }
 }

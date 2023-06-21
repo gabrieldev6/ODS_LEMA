@@ -33,7 +33,6 @@ export class PedidoController {
         prioridade,
       } = req.body;
 
-      let id_autorAutorizador = 1;
       let estado: Estado = Estado.pendente;
       let arquivo: Buffer | undefined;
 
@@ -52,7 +51,7 @@ export class PedidoController {
         comentario,
         Number(id_horaDisponivel),
         id,
-        Number(id_autorAutorizador)
+        null
       );
 
       const novoPedido = pedidoRepository.create(pedido);
@@ -99,111 +98,67 @@ export class PedidoController {
   }
 
   async updatePedido(req: Request, res: Response) {
-    const { authorization } = req.headers;
-    const { id_pedido } = req.params;
-    const { material, maquina, prioridade, cor, descricao, comentario } =
-      req.body;
-
-    if (!authorization) {
-      throw new Error("Não autorizado");
-    }
-
-    // Verificando se o token existe e obtendo o ID do usuário
-    const token = authorization.split(" ")[1];
-    const decodedToken = jwt.verify(token, process.env.JWT_PASS ?? "") as {
-      id: number;
-    };
-    const { id } = decodedToken;
-
     try {
+      const { authorization } = req.headers;
+      const { id_pedido } = req.params;
+  
+      if (!authorization) {
+        throw new Error("Não autorizado");
+      }
+  
+      // Verificando se o token existe e obtendo o ID do usuário
+      const token = authorization.split(" ")[1];
+      const decodedToken = jwt.verify(token, process.env.JWT_PASS ?? "") as {
+        id: number;
+      };
+      const { id } = decodedToken;
+  
+      // Verificar se o pedido pertence ao autor
       const pedido = await pedidoRepository.findOne({
-        where: { id_pedido: Number(id_pedido), id_autorPedido: id },
+        where: { id_pedido: parseInt(id_pedido), id_autorPedido: id },
       });
-
+  
       if (!pedido) {
-        throw new Error("Pedido não encontrado");
+        throw new Error("Pedido não encontrado ou não autorizado");
       }
-
-      // Verificando se o autor do pedido corresponde ao usuário autenticado
-      if (pedido.id_autorPedido !== id) {
-        throw new Error("Você não tem permissão para atualizar este pedido");
-      }
-
-      if (pedido.estado.toString().toLowerCase() !== Estado.pendente) {
-        throw new Error(
-          "O pedido não pode ser atualizado porque não está no estado 'pendente'"
-        );
-      }
-
+  
+      // Atualizar os dados do pedido
+      const {
+        material,
+        maquina,
+        cor,
+        descricao,
+        comentario,
+        id_horaDisponivel,
+        prioridade,
+      } = req.body;
+  
+      let arquivo: Buffer | undefined;
+  
       if (req.file) {
-        // Se um novo arquivo for enviado, atualize o arquivo no pedido
-        const arquivo = fs.readFileSync(req.file.path);
-        pedido.arquivo = arquivo || Buffer.alloc(0);
+        arquivo = fs.readFileSync(req.file.path);
       }
-
-      pedido.material = material || pedido.material;
-      pedido.maquina = maquina || pedido.maquina;
-      pedido.prioridade = prioridade || pedido.prioridade;
-      pedido.cor = cor || pedido.cor;
-      pedido.descricao = descricao || pedido.descricao;
-      pedido.comentario = comentario || pedido.comentario;
-
+  
+      pedido.material = material || material;
+      pedido.maquina = maquina || maquina;
+      pedido.cor = cor || cor;
+      pedido.descricao = descricao || descricao;
+      pedido.comentario = comentario || comentario;
+      pedido.id_horaDisponivel = Number(id_horaDisponivel) || id_horaDisponivel;
+      pedido.prioridade = prioridade || prioridade;
+      pedido.arquivo = arquivo || Buffer.alloc(0); // Verificação adicional para garantir que arquivo seja um Buffer
+  
       await pedidoRepository.save(pedido);
-
+  
       return res.status(200).json(pedido);
     } catch (error) {
-      throw new Error("Ocorreu um erro ao atualizar o pedido");
+      console.log(error)
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao atualizar o pedido" });
     }
   }
-
-  // async updatePedido(req: Request, res: Response) {
-  //   const { authorization } = req.headers;
-  //   const { id_pedido } = req.params;
-  //   const { material, maquina, prioridade, cor, descricao, comentario } = req.body;
-
-  //   if (!authorization) {
-  //     throw new Error("Não autorizado");
-  //   }
-
-  //   // verificando se o token existe
-  //   const token = authorization.split(" ")[1];
-  //   const decodedToken = jwt.verify(token, process.env.JWT_PASS ?? "") as {
-  //     id: number;
-  //   };
-  //   const { id } = decodedToken;
-
-  //   const pedido = await pedidoRepository.findOne({
-  //     where: { id_pedido: Number(id_pedido), id_autorPedido: id },
-  //   });
-
-  //   if (!pedido) {
-  //     throw new Error("Pedido não encontrado");
-  //   }
-
-  //   if (pedido.estado.toString().toLowerCase() !== Estado.pendente) {
-  //     throw new Error(
-  //       "O pedido não pode ser atualizado porque não está no estado 'pendente'"
-  //     );
-  //   }
-
-  //   if (req.file) {
-  //     // Se um novo arquivo for enviado, atualize o arquivo no pedido
-  //     const arquivo = fs.readFileSync(req.file.path);
-  //     pedido.arquivo = arquivo || Buffer.alloc(0);
-  //   }
-
-  //   pedido.material = material || pedido.material;
-  //   pedido.maquina = maquina || pedido.maquina;
-  //   pedido.prioridade = prioridade || pedido.prioridade;
-  //   pedido.cor = cor || pedido.cor;
-  //   pedido.descricao = descricao || pedido.descricao;
-  //   pedido.comentario = comentario || pedido.comentario;
-
-  //   await pedidoRepository.save(pedido);
-
-  //   return res.status(200).json(pedido);
-  // }
-
+  
   async deletePedido(req: Request, res: Response) {
     const { authorization } = req.headers;
     const { id_pedido } = req.params;
@@ -270,33 +225,34 @@ export class PedidoController {
 
       return res.status(200).json(pedidos);
     } catch (error) {
-      console.log(error);
       return res.status(500).json({ message: "Internal Server Error" });
     }
   }
 
   //busca todos os pedidos do usuario que ta logado
   async readPedido(req: Request, res: Response) {
-    const {authorization} = req.headers
-    if (!authorization) {
-      throw new Error("Não autorizado");
+    try {
+      const { authorization } = req.headers;
+      if (!authorization) {
+        throw new Error("Não autorizado");
+      }
+
+      const token = authorization.split(" ")[1];
+
+      const { id_usuario } = jwt.verify(
+        token,
+        process.env.JWT_PASS ?? ""
+      ) as jwt.JwtPayload;
+
+      const pedidos = await pedidoRepository.find({
+        where: { id_autorPedido: id_usuario },
+      });
+
+      return res.status(200).json(pedidos);
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao criar o pedido anônimo" });
     }
-
-    const token = authorization.split(" ")[1]
-    
-    
-    const { id_usuario } = jwt.verify(
-      token,
-      process.env.JWT_PASS ?? ""
-    ) as jwt.JwtPayload;
-
-    const pedidos = await pedidoRepository.find({
-      where: {id_autorPedido: id_usuario}
-    })
-
-    return res.status(200).json(pedidos)
-
   }
-
-
 }

@@ -1,6 +1,6 @@
 import { HoraDisponivel } from "./HoraDisponivel.entities";
 import { Usuario } from "./Usuario.entities";
-import { DeepPartial } from "typeorm";
+
 
 import {
   Column,

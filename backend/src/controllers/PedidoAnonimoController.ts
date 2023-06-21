@@ -4,7 +4,6 @@ import { pedidoAnonimoRepository } from "../repositories/PedidoAnonimoRepository
 import { PedidoAnonimo, Estado } from "../models/PedidoAnonimo";
 import fs from "fs";
 
-
 export class PedidoAnonimoController {
   async createPedidoAnonimo(req: Request, res: Response) {
     try {
@@ -17,46 +16,59 @@ export class PedidoAnonimoController {
         comentario,
         id_horaDisponivel,
       } = req.body;
-  
-      let id_autorAutorizadorAnonimo = 1;
+
       let estado: Estado = Estado.pendente;
       let arquivo: Buffer | undefined;
-      let codigo = bcrypt.hashSync(Date.now().toString(), 10); // gerando um hash a partir do timestamp atual
-  
+      let codigo = bcrypt
+        .hashSync(Date.now().toString(), 10)
+        .replace(/\//g, "");
+
       if (req.file) {
         arquivo = fs.readFileSync(req.file.path);
       }
-      
-      const pedidoAnonimo = new PedidoAnonimo (
-          material,
-          maquina,
-          estado,
-          arquivo || Buffer.alloc(0),
-          cor,
-          descricao,
-          comentario,
-          codigo,
-          id_horaDisponivel,
-          Number(id_autorAutorizadorAnonimo),
+
+      const pedidoAnonimo = new PedidoAnonimo(
+        material,
+        maquina,
+        estado,
+        arquivo || Buffer.alloc(0),
+        cor,
+        descricao,
+        comentario,
+        codigo,
+        id_horaDisponivel,
+        null
       );
-  
+
       const novoPedidoAnonimo = pedidoAnonimoRepository.create(pedidoAnonimo);
       await pedidoAnonimoRepository.save(novoPedidoAnonimo);
-  
+
       return res.status(201).json(novoPedidoAnonimo);
     } catch (error) {
       // Trate o erro aqui, você pode enviar uma resposta de erro personalizada ou executar outras ações necessárias
-      
-      return res.status(500).json({ error: "Ocorreu um erro ao criar o pedido anônimo" });
+
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao criar o pedido" });
     }
   }
-  
-  
 
-  async listPedidosAnonimos(req: Request, res: Response) {
+  // async listPedidosAnonimos(req: Request, res: Response) {
+  //   try {
+  //     const pedidos = await pedidoAnonimoRepository.find();
+
+  //     return res.status(200).json(pedidos);
+  //   } catch (error) {
+  //     console.log(error);
+  //     return res.status(500).json({ message: "Internal Server Error" });
+  //   }
+  // }
+
+  async listPedidosAnonimosByCodigo(req: Request, res: Response) {
     try {
-      const pedidos = await pedidoAnonimoRepository.find();
+      const { codigo } = req.params;
 
+      const pedidos = await pedidoAnonimoRepository.find({ where: { codigo } });
       return res.status(200).json(pedidos);
     } catch (error) {
       console.log(error);
@@ -64,88 +76,78 @@ export class PedidoAnonimoController {
     }
   }
 
-  // async listPedidosAnonimosT(req: Request, res: Response) {
-  //   try {
-  //     const pedidos = await pedidoAnonimoRepository
-  //       .createQueryBuilder("pedidoAnonimo")
-  //       .leftJoinAndSelect("pedidoAnonimo.id_horaDisponivel", "horaDisponivel")
-  //       .leftJoinAndSelect("pedidoAnonimo.id_autorAutorizadorAnonimo", "autorAutorizadorAnonimo")
-  //       .leftJoinAndSelect("autorAutorizadorAnonimo.id_cargo", "cargo")
-  //       .getMany();
-  
-  //     return res.status(200).json(pedidos);
-  //   } catch (error) {
-  //     console.log(error);
-  //     return res.status(500).json({ message: "Internal Server Error" });
-  //   }
-  // }
-  
-
-  async getPedidoByCodigo(req: Request, res: Response) {
-    const { codigo } = req.params;
-
+  async updatePedido(req: Request, res: Response) {
     try {
+      const { codigo } = req.params;
+      const {
+        material,
+        maquina,
+        cor,
+        descricao,
+        comentario,
+        id_horaDisponivel,
+      } = req.body;
+
       const pedido = await pedidoAnonimoRepository.findOne({
         where: { codigo: codigo },
       });
 
       if (!pedido) {
-        return res.status(404).json({ message: "Pedido não encontrado" });
+        throw new Error("Pedido não encontrado");
       }
+
+      if (pedido.estado.toString().toLowerCase() !== Estado.pendente) {
+        throw new Error(
+          "O pedido não pode ser atualizado porque não está no estado 'pendente'"
+        );
+      }
+
+      let arquivo: Buffer | undefined;
+
+      if (req.file) {
+        arquivo = fs.readFileSync(req.file.path);
+      }
+
+      pedido.material = material || pedido.material;
+      pedido.maquina = maquina || pedido.maquina;
+      pedido.cor = cor || cor;
+      pedido.descricao = descricao || descricao;
+      pedido.comentario = comentario || comentario;
+      pedido.id_horaDisponivel = Number(id_horaDisponivel) || id_horaDisponivel;
+      pedido.arquivo = arquivo || Buffer.alloc(0); // Verificação adicional para garantir que arquivo seja um Buffer
+
+      await pedidoAnonimoRepository.save(pedido);
 
       return res.status(200).json(pedido);
     } catch (error) {
-      console.log(error);
-      return res.status(500).json({ message: "Internal Server Error" });
+      console.log(error)
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao atualizar o pedido" });
     }
-  }
-
-  async updatePedido(req: Request, res: Response) {
-    const { codigo } = req.params;
-    const { material, maquina, medida } = req.body;
-
-    const pedido = await pedidoAnonimoRepository.findOne({
-      where: { codigo: codigo },
-    });
-
-    if (!pedido) {
-      throw new Error("Pedido não encontrado");
-    }
-
-    if (pedido.estado.toString().toLowerCase() !== Estado.pendente) {
-      throw new Error(
-        "O pedido não pode ser excluído porque não está no estado 'pendente'"
-      );
-    }
-
-    pedido.material = material || pedido.material;
-    pedido.maquina = maquina || pedido.maquina;
-    // pedido.medida = medida || pedido.medida;
-
-    await pedidoAnonimoRepository.save(pedido);
-
-    return res.status(200).json(pedido);
   }
 
   async deletePedido(req: Request, res: Response) {
-    
-    const { codigo } = req.params;
-  
-    
-    // Verificando se o pedido existe e se o estado é "pendente"
-    const pedido = await pedidoAnonimoRepository.findOne({
-      where: { codigo: codigo},
-    });
-  
-    if (!pedido) {
-      throw new Error("Pedido não encontrado");
+    try {
+      const { codigo } = req.params;
+
+      // Verificando se o pedido existe e se o estado é "pendente"
+      const pedido = await pedidoAnonimoRepository.findOne({
+        where: { codigo: codigo },
+      });
+
+      if (!pedido) {
+        throw new Error("Pedido não encontrado");
+      }
+
+      // Excluindo o pedido
+      await pedidoAnonimoRepository.delete({ codigo: codigo });
+
+      return res.status(202).json("pedido deletado");
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ error: "Ocorreu um erro ao deletar o pedido" });
     }
-  
-  
-    // Excluindo o pedido
-    await pedidoAnonimoRepository.delete({ codigo: codigo });
-  
-    return res.status(202).json("pedido deletado");
   }
-  
 }
